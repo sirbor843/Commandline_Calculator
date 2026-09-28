@@ -89,15 +89,22 @@ CalculationResult extra_load_data(const char *filename) {
     
     double sum = 0.0;
     int count = 0;
-    double val;
+    char line[256];
     
-    // CONCEPT: fscanf loop with feof check
-    while (fscanf(f, "%lf", &val) == 1) {
-        sum += val;
-        count++;
+    while (fgets(line, sizeof(line), f)) {
+        char *p = line;
+        while (*p == ' ' || *p == '\t') p++;
+        if (strncmp(p, "Result:", 7) == 0) {
+            p += 7;
+            while (*p == ' ' || *p == '\t') p++;
+        }
+        double val;
+        if (sscanf(p, "%lf", &val) == 1) {
+            sum += val;
+            count++;
+        }
     }
     
-    // CONCEPT: Distinguish EOF from error
     if (ferror(f)) {
         res.is_error = true;
         strcpy(res.err_message, "Error reading file.");
@@ -106,6 +113,11 @@ CalculationResult extra_load_data(const char *filename) {
     }
     
     fclose(f);
-    res.value = count > 0 ? sum / count : 0.0; // Return average
+    if (count == 0) {
+        res.is_error = true;
+        strcpy(res.err_message, "No valid numbers found in file.");
+        return res;
+    }
+    res.value = sum / count; // Return average
     return res;
 }

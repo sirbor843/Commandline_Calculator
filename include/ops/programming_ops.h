@@ -14,5 +14,6 @@ typedef struct {
 void programming_run_script(const char *script_name);
 void programming_list_scripts(void);
 CalculationResult programming_execute(const char *cmd, double *args, int nargs);
+void programming_demo_ds(const char *type);
 
 #endif // PROGRAMMING_OPS_H

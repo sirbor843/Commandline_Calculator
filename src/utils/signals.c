@@ -1,22 +1,26 @@
 #include "utils/signals.h"
-#include "cleanup.h"
-#include "utils/utils.h"
-#include "common.h"
 #include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
 
-void handle_sigint(int sig) {
+// CONCEPT: sig_atomic_t for lock-free, async-signal-safe state signaling
+static volatile sig_atomic_t g_interrupted = 0;
+
+static void handle_sigint(int sig) {
     (void)sig;
-    printf("\n\n");
-    printf("  %s╭────────────────────────────────╮%s\n", COLOR_CORAL, COLOR_RESET);
-    printf("  %s│%s  %s%s%s Interrupt received (Ctrl+C)   %s│%s\n", 
-           COLOR_CORAL, COLOR_RESET, COLOR_GOLD, SYM_WARN, COLOR_RESET, COLOR_CORAL, COLOR_RESET);
-    printf("  %s╰────────────────────────────────╯%s\n", COLOR_CORAL, COLOR_RESET);
-    cleanup_calculator();
-    exit(0);
+    g_interrupted = 1;
 }
 
 void setup_signal_handlers(void) {
     signal(SIGINT, handle_sigint);
+}
+
+bool check_and_clear_interrupted(void) {
+    if (g_interrupted) {
+        g_interrupted = 0;
+        return true;
+    }
+    return false;
+}
+
+bool is_interrupted(void) {
+    return g_interrupted != 0;
 }

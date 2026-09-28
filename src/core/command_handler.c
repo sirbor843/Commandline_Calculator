@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 typedef struct {
     const char *name;
@@ -102,7 +103,7 @@ static int parse_calculus_integral_args(char *remaining, char **expr, double *a,
                 sscanf(b_tok_a, "%lf", &b_a) == 1);
     CalculationResult expr_check_a = {0.0, true, ""};
     if (ok_a) {
-        expr_check_a = evaluate_expression(attempt1, (*a + *b) / 2.0);
+        expr_check_a = evaluate_expression(attempt1, (a_a + b_a) / 2.0);
     }
 
     // Attempt B: <expr> <a> <b> <n>
@@ -143,6 +144,16 @@ static int parse_calculus_integral_args(char *remaining, char **expr, double *a,
     }
 
     return 0;
+}
+
+CommandType identify_command(const char *cmd_name) {
+    if (!cmd_name) return CMD_UNKNOWN;
+    for (int i = 0; command_table[i].name != NULL; i++) {
+        if (strcmp(cmd_name, command_table[i].name) == 0) {
+            return command_table[i].type;
+        }
+    }
+    return CMD_UNKNOWN;
 }
 
 void handle_command(const char *command_str) {
@@ -425,7 +436,63 @@ void handle_statistical(const char *args) {
     else if (strcmp(op, "max") == 0) res = statistical_max(data, count);
     else if (strcmp(op, "count") == 0) res = statistical_count(data, count);
     else if (strcmp(op, "percentile") == 0) res = statistical_percentile(data, count, percentile_val);
-    else { free(data); log_error("Unknown statistical operation"); return; }
+    else if (strcmp(op, "quartiles") == 0) {
+        double q1 = 0, q2 = 0, q3 = 0;
+        res = statistical_quartiles(data, count, &q1, &q2, &q3);
+        if (res.is_error) {
+            log_error(res.err_message);
+        } else {
+            printf("\n    %s╭─ Quartiles (25%%, 50%%, 75%%) ─────╮%s\n", COLOR_PURPLE, COLOR_RESET);
+            printf("    %s│%s  Q1 (25%%): %s%12.6g%s              %s│%s\n",
+                   COLOR_PURPLE, COLOR_RESET, COLOR_GOLD, q1, COLOR_RESET, COLOR_PURPLE, COLOR_RESET);
+            printf("    %s│%s  Q2 (50%%): %s%12.6g%s (Median)     %s│%s\n",
+                   COLOR_PURPLE, COLOR_RESET, COLOR_GOLD, q2, COLOR_RESET, COLOR_PURPLE, COLOR_RESET);
+            printf("    %s│%s  Q3 (75%%): %s%12.6g%s              %s│%s\n",
+                   COLOR_PURPLE, COLOR_RESET, COLOR_GOLD, q3, COLOR_RESET, COLOR_PURPLE, COLOR_RESET);
+            printf("    %s│%s  IQR:      %s%12.6g%s              %s│%s\n",
+                   COLOR_PURPLE, COLOR_RESET, COLOR_MINT, q3 - q1, COLOR_RESET, COLOR_PURPLE, COLOR_RESET);
+            printf("    %s╰───────────────────────────────────╯%s\n\n", COLOR_PURPLE, COLOR_RESET);
+            history_add(q2);
+        }
+        free(data);
+        return;
+    } else if (strcmp(op, "covariance") == 0 || strcmp(op, "correlation") == 0 || strcmp(op, "regression") == 0) {
+        if (count % 2 != 0 || count < 4) {
+            free(data);
+            log_error("Paired statistics require an even number of values (at least 2 pairs: x1..xn y1..yn)");
+            return;
+        }
+        int n = count / 2;
+        double *x = data;
+        double *y = data + n;
+        if (strcmp(op, "covariance") == 0) {
+            res = statistical_covariance(x, y, n);
+        } else if (strcmp(op, "correlation") == 0) {
+            res = statistical_correlation(x, y, n);
+        } else {
+            CalculationResult slope_res = statistical_linear_regression_slope(x, y, n);
+            CalculationResult int_res = statistical_linear_regression_intercept(x, y, n);
+            if (slope_res.is_error || int_res.is_error) {
+                log_error(slope_res.is_error ? slope_res.err_message : int_res.err_message);
+            } else {
+                printf("\n    %s╭─ Linear Regression ──────────────╮%s\n", COLOR_PURPLE, COLOR_RESET);
+                printf("    %s│%s  Model:     y = %s%.4gx + %.4g%s     %s│%s\n",
+                       COLOR_PURPLE, COLOR_RESET, COLOR_GOLD, slope_res.value, int_res.value, COLOR_RESET, COLOR_PURPLE, COLOR_RESET);
+                printf("    %s│%s  Slope (m): %s%12.6g%s            %s│%s\n",
+                       COLOR_PURPLE, COLOR_RESET, COLOR_MINT, slope_res.value, COLOR_RESET, COLOR_PURPLE, COLOR_RESET);
+                printf("    %s│%s  Intercept: %s%12.6g%s            %s│%s\n",
+                       COLOR_PURPLE, COLOR_RESET, COLOR_MINT, int_res.value, COLOR_RESET, COLOR_PURPLE, COLOR_RESET);
+                printf("    %s╰───────────────────────────────────╯%s\n\n", COLOR_PURPLE, COLOR_RESET);
+                history_add(slope_res.value);
+            }
+            free(data);
+            return;
+        }
+    } else {
+        free(data);
+        log_error("Unknown statistical operation. Try: mean, median, mode, stddev, variance, range, quartiles, covariance, correlation, regression");
+        return;
+    }
     
     print_result(res);
     free(data);
@@ -449,7 +516,17 @@ void handle_converter(const char *args) {
     } else if (strcmp(op, "to_binary") == 0) {
         int v1;
         if (sscanf(v1s, "%d", &v1) != 1) { log_error("Invalid integer format"); return; }
-        print_result(converter_to_binary(v1));
+        char bin_str[64];
+        converter_format_binary(v1, bin_str, sizeof(bin_str));
+        printf("\n    %s╭─ Binary Output ─────────────────╮%s\n", COLOR_TEAL, COLOR_RESET);
+        printf("    %s│%s  Decimal: %s%-10d%s              %s│%s\n",
+               COLOR_TEAL, COLOR_RESET, COLOR_GOLD, v1, COLOR_RESET, COLOR_TEAL, COLOR_RESET);
+        printf("    %s│%s  Binary:  %s0b%-20s%s  %s│%s\n",
+               COLOR_TEAL, COLOR_RESET, COLOR_MINT, bin_str, COLOR_RESET, COLOR_TEAL, COLOR_RESET);
+        printf("    %s╰─────────────────────────────────╯%s\n\n", COLOR_TEAL, COLOR_RESET);
+        CalculationResult res = converter_to_binary(v1);
+        history_add(res.value);
+        return;
     } else if (strcmp(op, "length") == 0) {
         // converter length 100 cm m
         if (!v2s || !v3s) { log_error("Usage: converter length <value> <from> <to>"); return; }
@@ -654,16 +731,79 @@ void handle_solver(const char *args) {
         return;
     }
     
-    log_error("Unknown solver operation. Try: det2x2, det3x3, quadratic, linear2, linear3, roots");
+    if (strcmp(op, "newton") == 0) {
+        char *remaining = strtok(NULL, "");
+        if (!remaining) { log_error("Usage: solver newton <expr> <x0>"); return; }
+        trim_whitespace(remaining);
+        char *x0s = pop_last_token(remaining);
+        char *expr = remaining;
+        if (!expr || !x0s || strlen(expr) == 0) {
+            log_error("Usage: solver newton <expr> <x0>");
+            return;
+        }
+        double x0;
+        if (sscanf(x0s, "%lf", &x0) != 1) { log_error("Invalid initial guess"); return; }
+        print_result(solver_newton_raphson(expr, x0, 1e-10, 100));
+        return;
+    }
+
+    if (strcmp(op, "poly") == 0) {
+        char *xs = strtok(NULL, " ");
+        if (!xs) { log_error("Usage: solver poly <x> <coeffs...>"); return; }
+        double x;
+        if (sscanf(xs, "%lf", &x) != 1) { log_error("Invalid x value"); return; }
+        
+        int cap = 10, count = 0;
+        double *coeffs = malloc(cap * sizeof(double));
+        if (!coeffs) { log_error("Memory allocation failed"); return; }
+        
+        char *t = strtok(NULL, " ");
+        while (t) {
+            if (count >= cap) {
+                cap *= 2;
+                double *new_coeffs = realloc(coeffs, cap * sizeof(double));
+                if (!new_coeffs) { free(coeffs); log_error("Memory allocation failed"); return; }
+                coeffs = new_coeffs;
+            }
+            if (sscanf(t, "%lf", &coeffs[count]) == 1) count++;
+            t = strtok(NULL, " ");
+        }
+        if (count == 0) { free(coeffs); log_error("No coefficients provided"); return; }
+        print_result(solver_poly_eval(coeffs, count - 1, x));
+        free(coeffs);
+        return;
+    }
+
+    if (strcmp(op, "trace") == 0) {
+        char *ns = strtok(NULL, " ");
+        if (!ns) { log_error("Usage: solver trace <size_n> <n*n matrix values...>"); return; }
+        int n;
+        if (sscanf(ns, "%d", &n) != 1 || n <= 0) { log_error("Invalid matrix size"); return; }
+        double *m = malloc(n * n * sizeof(double));
+        if (!m) { log_error("Memory allocation failed"); return; }
+        for (int i = 0; i < n * n; i++) {
+            char *s = strtok(NULL, " ");
+            if (!s || sscanf(s, "%lf", &m[i]) != 1) {
+                free(m);
+                log_error("Insufficient matrix elements provided.");
+                return;
+            }
+        }
+        print_result(solver_matrix_trace(m, n));
+        free(m);
+        return;
+    }
+    
+    log_error("Unknown solver operation. Try: det2x2, det3x3, quadratic, linear2, linear3, roots, newton, poly, trace");
 }
 
 void handle_extra(const char *args) {
-    if (!args) { log_error("Usage: extra save <value> <filename>"); return; }
+    if (!args) { log_error("Usage: extra save|load|save_bin|load_bin ..."); return; }
     char copy[MAX_CMD_LEN];
     strncpy(copy, args, MAX_CMD_LEN - 1);
     copy[MAX_CMD_LEN - 1] = '\0';
     char *op = strtok(copy, " ");
-    if (!op) { log_error("Usage: extra save <value> <filename>"); return; }
+    if (!op) { log_error("Usage: extra save|load|save_bin|load_bin ..."); return; }
     if (strcmp(op, "save") == 0) {
         char *vs = strtok(NULL, " "), *fs = strtok(NULL, " ");
         if (!vs || !fs) { log_error("Usage: extra save <value> <filename>"); return; }
@@ -676,8 +816,49 @@ void handle_extra(const char *args) {
         char *fs = strtok(NULL, " ");
         if (!fs) { log_error("Usage: extra load <filename>"); return; }
         print_result(extra_load_data(fs));
+    } else if (strcmp(op, "save_bin") == 0) {
+        char *fs = strtok(NULL, " ");
+        if (!fs) { log_error("Usage: extra save_bin <filename> <values...>"); return; }
+        int cap = 10, count = 0;
+        double *data = malloc(cap * sizeof(double));
+        if (!data) { log_error("Memory allocation failed"); return; }
+        char *t = strtok(NULL, " ");
+        while (t) {
+            if (count >= cap) {
+                cap *= 2;
+                double *new_data = realloc(data, cap * sizeof(double));
+                if (!new_data) { free(data); log_error("Memory allocation failed"); return; }
+                data = new_data;
+            }
+            if (sscanf(t, "%lf", &data[count]) == 1) count++;
+            t = strtok(NULL, " ");
+        }
+        if (count == 0) { free(data); log_error("No values provided to save."); return; }
+        CalculationResult res = extra_save_binary(data, count, fs);
+        free(data);
+        if (!res.is_error) log_success("Binary data saved successfully.");
+        else log_error(res.err_message);
+    } else if (strcmp(op, "load_bin") == 0) {
+        char *fs = strtok(NULL, " ");
+        if (!fs) { log_error("Usage: extra load_bin <filename>"); return; }
+        double buffer[256];
+        int out_n = 0;
+        CalculationResult res = extra_load_binary(buffer, 256, fs, &out_n);
+        if (res.is_error) {
+            log_error(res.err_message);
+        } else {
+            printf("\n    %s╭─ Loaded %d Binary Values ────────╮%s\n", COLOR_MINT, out_n, COLOR_RESET);
+            for (int i = 0; i < out_n && i < 10; i++) {
+                printf("    %s│%s  [%d] = %s%12.6g%s             %s│%s\n",
+                       COLOR_MINT, COLOR_RESET, i, COLOR_GOLD, buffer[i], COLOR_RESET, COLOR_MINT, COLOR_RESET);
+            }
+            if (out_n > 10) printf("    %s│%s  ... and %d more items             %s│%s\n", COLOR_MINT, COLOR_RESET, out_n - 10, COLOR_MINT, COLOR_RESET);
+            printf("    %s╰──────────────────────────────────╯%s\n\n", COLOR_MINT, COLOR_RESET);
+            CalculationResult sum_res = basic_sum(buffer, out_n);
+            if (!sum_res.is_error) history_add(sum_res.value);
+        }
     } else {
-        log_error("Unknown extra operation. Use: save, load");
+        log_error("Unknown extra operation. Use: save, load, save_bin, load_bin");
     }
 }
 
@@ -712,7 +893,13 @@ void handle_complex(const char *args) {
     if (strcmp(op, "add") == 0) result = complex_add(z1, z2);
     else if (strcmp(op, "sub") == 0) result = complex_sub(z1, z2);
     else if (strcmp(op, "mul") == 0) result = complex_mul(z1, z2);
-    else if (strcmp(op, "div") == 0) result = complex_div(z1, z2);
+    else if (strcmp(op, "div") == 0) {
+        if (fabs(z2.real) < 1e-15 && fabs(z2.imag) < 1e-15) {
+            log_error("Division by zero in complex numbers.");
+            return;
+        }
+        result = complex_div(z1, z2);
+    }
     else { log_error("Unknown operation. Use: add, sub, mul, div, mag"); return; }
     
     complex_print(result);
@@ -784,19 +971,38 @@ void handle_financial(const char *args) {
         int periods;
         if (sscanf(rs, "%lf", &rate) != 1 || sscanf(ns, "%d", &periods) != 1 || sscanf(pmts, "%lf", &pmt) != 1 || sscanf(fvs, "%lf", &fv) != 1) { log_error("Invalid arguments"); return; }
         print_result(financial_pv(rate, periods, pmt, fv));
+    } else if (strcmp(op, "irr") == 0) {
+        int cap = 10, count = 0;
+        double *cfs = malloc(cap * sizeof(double));
+        if (!cfs) { log_error("Memory allocation failed"); return; }
+        
+        char *t = strtok(NULL, " ");
+        while (t) {
+            if (count >= cap) {
+                cap *= 2;
+                double *new_cfs = realloc(cfs, cap * sizeof(double));
+                if (!new_cfs) { free(cfs); log_error("Memory allocation failed"); return; }
+                cfs = new_cfs;
+            }
+            if (sscanf(t, "%lf", &cfs[count]) == 1) count++;
+            t = strtok(NULL, " ");
+        }
+        if (count < 2) { free(cfs); log_error("Usage: financial irr <cashflows...> (requires at least 2 cash flows)"); return; }
+        print_result(financial_irr(cfs, count));
+        free(cfs);
     } else {
-        log_error("Unknown operation. Use: npv, compound, pmt, fv, pv");
+        log_error("Unknown operation. Use: npv, irr, compound, pmt, fv, pv");
     }
 }
 
 // CONCEPT: Programming/scripting handler with function pointers
 void handle_programming(const char *args) {
-    if (!args) { log_error("Usage: programming <list|run> [script] [args...]"); return; }
+    if (!args) { log_error("Usage: programming <list|run|concepts|ds_demo> [script] [args...]"); return; }
     char copy[MAX_CMD_LEN];
     strncpy(copy, args, MAX_CMD_LEN - 1);
     copy[MAX_CMD_LEN - 1] = '\0';
     char *op = strtok(copy, " ");
-    if (!op) { log_error("Usage: programming <list|run> [script] [args...]"); return; }
+    if (!op) { log_error("Usage: programming <list|run|concepts|ds_demo> [script] [args...]"); return; }
     
     if (strcmp(op, "list") == 0) {
         programming_list_scripts();
@@ -808,6 +1014,9 @@ void handle_programming(const char *args) {
         printf("    %s│%s  %s▸%s structs, function pointers, callbacks %s│%s\n", COLOR_SKY, COLOR_RESET, COLOR_MINT, COLOR_RESET, COLOR_SKY, COLOR_RESET);
         printf("    %s│%s  %s▸%s queues, stacks, BST, graph structures %s│%s\n", COLOR_SKY, COLOR_RESET, COLOR_MINT, COLOR_RESET, COLOR_SKY, COLOR_RESET);
         printf("    %s╰───────────────────────────────────────────────╯%s\n\n", COLOR_SKY, COLOR_RESET);
+    } else if (strcmp(op, "ds_demo") == 0) {
+        char *type = strtok(NULL, " ");
+        programming_demo_ds(type);
     } else if (strcmp(op, "run") == 0) {
         char *script = strtok(NULL, " ");
         if (!script) { log_error("Usage: programming run <script> [args...]"); return; }
@@ -831,7 +1040,7 @@ void handle_programming(const char *args) {
         print_result(programming_execute(script, args_arr, count));
         free(args_arr);
     } else {
-        log_error("Unknown operation. Use: list, run");
+        log_error("Unknown operation. Use: list, run, concepts, ds_demo");
     }
 }
 

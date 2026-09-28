@@ -1,4 +1,9 @@
 # CONCEPT: Makefile for modular C development
+ifeq ($(shell uname -s),Darwin)
+  ifneq ($(wildcard /Library/Developer/CommandLineTools/usr/bin),)
+    export DEVELOPER_DIR ?= /Library/Developer/CommandLineTools
+  endif
+endif
 CC ?= gcc
 TARGET ?= calculator
 BUILD ?= debug

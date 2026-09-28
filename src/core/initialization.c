@@ -1,3 +1,6 @@
+#if !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 199309L
+#endif
 #include "initialization.h"
 #include "utils/utils.h"
 #include "common.h"
@@ -15,11 +18,10 @@ static void print_progress_bar(int step, int total) {
 }
 
 static void sleep_milliseconds(long milliseconds) {
-    clock_t start = clock();
-    double seconds = (double)milliseconds / 1000.0;
-    while (((double)(clock() - start) / (double)CLOCKS_PER_SEC) < seconds) {
-        // Busy-wait fallback for strict C99 portability.
-    }
+    struct timespec ts;
+    ts.tv_sec = milliseconds / 1000;
+    ts.tv_nsec = (milliseconds % 1000) * 1000000L;
+    nanosleep(&ts, NULL);
 }
 
 void initialize_calculator(void) {

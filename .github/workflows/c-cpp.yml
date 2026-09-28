@@ -57,3 +57,8 @@ jobs:
             exit 1
           fi
           echo "Smoke test passed!"
+
+      - name: CLI Regression Tests
+        run: |
+          set -euxo pipefail
+          ./tests/run_tests.sh

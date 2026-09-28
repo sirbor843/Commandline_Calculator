@@ -1,12 +1,32 @@
 #include "ops/converter_ops.h"
 #include <string.h>
 
-// CONCEPT: Bitwise AND and left shift (Day 24)
+// CONCEPT: Bitwise operations to extract binary digits (Day 24)
+void converter_format_binary(int n, char *out, size_t max_len) {
+    if (!out || max_len == 0) return;
+    unsigned int un = (unsigned int)n;
+    char buffer[33];
+    buffer[32] = '\0';
+    for (int i = 31; i >= 0; i--) {
+        buffer[31 - i] = ((un >> i) & 1) ? '1' : '0';
+    }
+    
+    // Find first '1' or keep at least single digit '0'
+    const char *p = buffer;
+    while (*p == '0' && *(p + 1) != '\0') {
+        p++;
+    }
+    strncpy(out, p, max_len - 1);
+    out[max_len - 1] = '\0';
+}
+
 CalculationResult converter_to_binary(int n) {
     CalculationResult res;
     res.is_error = false;
     strcpy(res.err_message, "");
-    res.value = (double)n; 
+    char bin_str[64];
+    converter_format_binary(n, bin_str, sizeof(bin_str));
+    res.value = strtod(bin_str, NULL);
     return res;
 }
 

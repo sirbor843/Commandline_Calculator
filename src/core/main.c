@@ -122,7 +122,11 @@ void print_help(void) {
            COLOR_PURPLE, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
     printf("    %s▸%s %sstatistical%s stddev|variance|range <vals>  %sDispersion%s\n",
            COLOR_PURPLE, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
-    printf("    %s▸%s %sstatistical%s sum|min|max|count <vals...>   %sAggregates%s\n",
+    printf("    %s▸%s %sstatistical%s quartiles <vals...>           %sQ1, Median, Q3, IQR%s\n",
+           COLOR_PURPLE, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
+    printf("    %s▸%s %sstatistical%s correlation|covariance <x...> <y...> %sPaired statistics%s\n",
+           COLOR_PURPLE, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
+    printf("    %s▸%s %sstatistical%s regression <x...> <y...>      %sLinear fit y = mx + b%s\n",
            COLOR_PURPLE, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
     printf("    %s▸%s %sstatistical%s percentile <p> <vals...>      %sPercentile (0-100)%s\n",
            COLOR_PURPLE, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
@@ -131,17 +135,19 @@ void print_help(void) {
     
     // SOLVER
     print_separator("EQUATION SOLVERS");
-    printf("    %s▸%s %ssolver%s det2x2 <a b c d>             %s2x2 determinant%s\n",
+    printf("    %s▸%s %ssolver%s det2x2|det3x3 <matrix values> %sMatrix determinants%s\n",
            COLOR_CORAL, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
-    printf("    %s▸%s %ssolver%s det3x3 <9 values>            %s3x3 determinant%s\n",
+    printf("    %s▸%s %ssolver%s trace <n> <n*n matrix values> %sMatrix trace%s\n",
            COLOR_CORAL, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
     printf("    %s▸%s %ssolver%s quadratic <a> <b> <c>        %sax² + bx + c = 0%s\n",
            COLOR_CORAL, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
-    printf("    %s▸%s %ssolver%s linear2 <a1 b1 c1 a2 b2 c2>  %s2x2 linear system%s\n",
+    printf("    %s▸%s %ssolver%s linear2|linear3 <coeffs...>  %sLinear systems%s\n",
            COLOR_CORAL, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
-    printf("    %s▸%s %ssolver%s linear3 <12 coefficients>    %s3x3 linear system%s\n",
+    printf("    %s▸%s %ssolver%s roots <expr> <a> <b>         %sBisection root finding%s\n",
            COLOR_CORAL, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
-    printf("    %s▸%s %ssolver%s roots <expr> <a> <b>         %sFind root in [a,b]%s\n",
+    printf("    %s▸%s %ssolver%s newton <expr> <x0>           %sNewton-Raphson solver%s\n",
+           COLOR_CORAL, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
+    printf("    %s▸%s %ssolver%s poly <x> <coeffs...>         %sPolynomial evaluation%s\n",
            COLOR_CORAL, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
     printf("      %s→%s solver quadratic 1 -5 6 %s⟹%s %sx=3, x=2%s\n",
            COLOR_GOLD, COLOR_RESET, COLOR_TEAL, COLOR_RESET, COLOR_LIME, COLOR_RESET);
@@ -174,6 +180,8 @@ void print_help(void) {
     print_separator("FINANCIAL");
     printf("    %s▸%s %sfinancial npv%s <rate> <cf...>       %sNet Present Value%s\n",
            COLOR_GOLD, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
+    printf("    %s▸%s %sfinancial irr%s <cf0> <cf1...>       %sInternal Rate of Return%s\n",
+           COLOR_GOLD, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
     printf("    %s▸%s %sfinancial compound%s <P> <r> <n>     %sCompound interest%s\n",
            COLOR_GOLD, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
     printf("    %s▸%s %sfinancial pmt%s <r> <n> <pv>         %sLoan payment%s\n",
@@ -183,16 +191,18 @@ void print_help(void) {
     
     // MEMORY
     print_separator("MEMORY & CONVERTERS");
-    printf("    %s▸%s %smemory%s store|recall|list          %sStore/recall values%s\n",
+    printf("    %s▸%s %smemory%s store|recall|list          %sStore/recall values (BST)%s\n",
            COLOR_MINT, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
-    printf("    %s▸%s %shistory%s show|last|clear           %sResult timeline controls%s\n",
+    printf("    %s▸%s %shistory%s show|last|clear           %sResult timeline controls (Queue)%s\n",
            COLOR_PURPLE, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
-    printf("    %s▸%s %sprogramming%s concepts              %sShow C concept coverage%s\n",
+    printf("    %s▸%s %sprogramming%s concepts|ds_demo      %sShow C concepts & data struct demos%s\n",
            COLOR_SKY, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
-    printf("    %s▸%s %sconverter%s length|temp <v> <from> <to>\n",
-           COLOR_TEAL, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET);
-    printf("    %s▸%s %sconverter%s check_bit <n> <bit>      %sBit manipulation%s\n",
+    printf("    %s▸%s %sconverter%s to_binary|check_bit     %sBit manipulation%s\n",
            COLOR_TEAL, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
+    printf("    %s▸%s %sconverter%s length|temp <v> <f> <t> %sUnit conversion%s\n",
+           COLOR_TEAL, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
+    printf("    %s▸%s %sextra%s save|load|save_bin|load_bin %sFile persistence (Text/Binary)%s\n",
+           COLOR_CORAL, COLOR_RESET, COLOR_BOLD_WHITE, COLOR_RESET, STYLE_DIM, COLOR_RESET);
     
     // SYSTEM
     print_separator("SYSTEM");
@@ -226,11 +236,29 @@ int main(void) {
     printf("  %s└───────────────────────────────────────────────%s\n\n", COLOR_TEAL, COLOR_RESET);
 
     while (true) {
+        if (is_interrupted()) {
+            printf("\n\n");
+            printf("  %s╭────────────────────────────────╮%s\n", COLOR_CORAL, COLOR_RESET);
+            printf("  %s│%s  %s%s%s Interrupt received (Ctrl+C)   %s│%s\n", 
+                   COLOR_CORAL, COLOR_RESET, COLOR_GOLD, SYM_WARN, COLOR_RESET, COLOR_CORAL, COLOR_RESET);
+            printf("  %s╰────────────────────────────────╯%s\n\n", COLOR_CORAL, COLOR_RESET);
+            break;
+        }
+
         // Modern prompt with lambda symbol
         printf("  %s%s%s %s›%s ", COLOR_PURPLE, SYM_LAMBDA, COLOR_RESET, COLOR_MINT, COLOR_RESET);
+        fflush(stdout);
         
         if (fgets(input, sizeof(input), stdin) == NULL) {
-            printf("\n");
+            if (is_interrupted()) {
+                printf("\n\n");
+                printf("  %s╭────────────────────────────────╮%s\n", COLOR_CORAL, COLOR_RESET);
+                printf("  %s│%s  %s%s%s Interrupt received (Ctrl+C)   %s│%s\n", 
+                       COLOR_CORAL, COLOR_RESET, COLOR_GOLD, SYM_WARN, COLOR_RESET, COLOR_CORAL, COLOR_RESET);
+                printf("  %s╰────────────────────────────────╯%s\n\n", COLOR_CORAL, COLOR_RESET);
+            } else {
+                printf("\n");
+            }
             break;
         }
 

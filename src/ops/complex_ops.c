@@ -32,8 +32,8 @@ Complex complex_div(Complex a, Complex b) {
     Complex result;
     double denom = b.real * b.real + b.imag * b.imag;
     if (denom == 0.0) {
-        result.real = 0.0;
-        result.imag = 0.0;
+        result.real = NAN;
+        result.imag = NAN;
     } else {
         result.real = (a.real * b.real + a.imag * b.imag) / denom;
         result.imag = (a.imag * b.real - a.real * b.imag) / denom;
@@ -45,11 +45,28 @@ double complex_magnitude(Complex z) {
     return sqrt(z.real * z.real + z.imag * z.imag);
 }
 
-// CONCEPT: String parsing for complex format "a+bi" or "a-bi"
+// CONCEPT: String parsing for complex format "a+bi", "a-bi", "bi", "i", or "a"
 CalculationResult complex_parse(const char *str, Complex *out) {
     CalculationResult res = {0.0, false, ""};
     out->real = 0.0;
     out->imag = 0.0;
+    
+    if (str == NULL || *str == '\0') {
+        res.is_error = true;
+        strcpy(res.err_message, "Empty complex string.");
+        return res;
+    }
+
+    if (strcmp(str, "i") == 0 || strcmp(str, "+i") == 0) {
+        out->real = 0.0;
+        out->imag = 1.0;
+        return res;
+    }
+    if (strcmp(str, "-i") == 0) {
+        out->real = 0.0;
+        out->imag = -1.0;
+        return res;
+    }
     
     double real = 0.0, imag = 0.0;
     char sign = '+';
@@ -57,7 +74,7 @@ CalculationResult complex_parse(const char *str, Complex *out) {
     
     // Try format: a+bi or a-bi
     matched = sscanf(str, "%lf%c%lfi", &real, &sign, &imag);
-    if (matched == 3) {
+    if (matched == 3 && (sign == '+' || sign == '-')) {
         out->real = real;
         out->imag = (sign == '-') ? -imag : imag;
         return res;
